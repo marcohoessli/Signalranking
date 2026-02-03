@@ -816,10 +816,10 @@ async def update_user_role(user_id: str, role_data: RoleUpdate, request: Request
     return {"message": f"User role updated to {role_data.role}"}
 
 @api_router.get("/users", response_model=List[UserResponse])
-async def get_all_users(request: Request):
+async def get_all_users(request: Request, limit: int = 100):
     await get_admin_user(request)
     
-    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(None)
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(limit)
     
     for user in users:
         if isinstance(user.get("created_at"), str):
