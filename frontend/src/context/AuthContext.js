@@ -24,7 +24,9 @@ export const AuthProvider = ({ children }) => {
         credentials: "include"
       });
       if (response.ok) {
-        const userData = await response.json();
+        const data = await response.json();
+        // Create plain object copy for Safari compatibility
+        const userData = JSON.parse(JSON.stringify(data));
         setUser(userData);
         return userData;
       } else {
@@ -48,12 +50,14 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password })
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Login failed");
+      throw new Error(data.detail || "Login failed");
     }
 
-    const userData = await response.json();
+    // Create plain object copy for Safari compatibility
+    const userData = JSON.parse(JSON.stringify(data));
     setUser(userData);
     return userData;
   };
@@ -66,12 +70,14 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, name, password })
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Signup failed");
+      throw new Error(data.detail || "Signup failed");
     }
 
-    const userData = await response.json();
+    // Create plain object copy for Safari compatibility
+    const userData = JSON.parse(JSON.stringify(data));
     setUser(userData);
     return userData;
   };
