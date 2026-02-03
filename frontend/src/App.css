@@ -1,34 +1,121 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* SignalRanking Custom Styles */
+
+.font-heading {
+    font-family: 'Manrope', sans-serif;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+.font-body {
+    font-family: 'Inter', sans-serif;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
     }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+@keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
-.App-link {
-    color: #61dafb;
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+.animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Card hover effects */
+.card-interactive {
+    transition: border-color 0.2s ease-out;
+}
+
+.card-interactive:hover {
+    border-color: #93c5fd;
+}
+
+/* Category badge colors */
+.category-crypto { 
+    background-color: #fef3c7; 
+    color: #92400e; 
+    border: 1px solid #fcd34d;
+}
+
+.category-politics { 
+    background-color: #fee2e2; 
+    color: #991b1b; 
+    border: 1px solid #fca5a5;
+}
+
+.category-tech { 
+    background-color: #dbeafe; 
+    color: #1e40af; 
+    border: 1px solid #93c5fd;
+}
+
+.category-sports { 
+    background-color: #d1fae5; 
+    color: #065f46; 
+    border: 1px solid #6ee7b7;
+}
+
+.category-other { 
+    background-color: #f1f5f9; 
+    color: #475569; 
+    border: 1px solid #cbd5e1;
+}
+
+/* Probability slider track */
+.probability-track {
+    background: linear-gradient(to right, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+}
+
+/* Status badges */
+.status-open {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-closed {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-resolved {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+/* Leaderboard rank styles */
+.rank-1 {
+    background: linear-gradient(135deg, #fef3c7, #fcd34d);
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #fed7aa, #fdba74);
 }
