@@ -759,32 +759,37 @@ async def get_user_profile(user_id: str):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Calculate category stats
+    # Calculate category stats with optimized queries (avoid N+1)
     predictions = await db.predictions.find(
         {"user_id": user_id, "brier_score": {"$ne": None}},
-        {"_id": 0}
-    ).to_list(None)
+        {"_id": 0, "question_id": 1, "brier_score": 1}
+    ).to_list(1000)
     
     category_stats = {}
-    for pred in predictions:
-        question = await db.questions.find_one(
-            {"question_id": pred["question_id"]},
-            {"_id": 0}
-        )
-        if question:
-            category = question["category"]
-            if category not in category_stats:
-                category_stats[category] = {"total_brier": 0, "count": 0}
-            category_stats[category]["total_brier"] += pred["brier_score"]
-            category_stats[category]["count"] += 1
-    
-    # Convert to accuracy percentages
-    for cat in category_stats:
-        avg_brier = category_stats[cat]["total_brier"] / category_stats[cat]["count"]
-        category_stats[cat] = {
-            "accuracy": round((1 - avg_brier) * 100, 2),
-            "count": category_stats[cat]["count"]
-        }
+    if predictions:
+        # Fetch all questions in single query
+        question_ids = list(set(p["question_id"] for p in predictions))
+        questions_list = await db.questions.find(
+            {"question_id": {"$in": question_ids}},
+            {"_id": 0, "question_id": 1, "category": 1}
+        ).to_list(len(question_ids))
+        questions_map = {q["question_id"]: q["category"] for q in questions_list}
+        
+        for pred in predictions:
+            category = questions_map.get(pred["question_id"])
+            if category:
+                if category not in category_stats:
+                    category_stats[category] = {"total_brier": 0, "count": 0}
+                category_stats[category]["total_brier"] += pred["brier_score"]
+                category_stats[category]["count"] += 1
+        
+        # Convert to accuracy percentages
+        for cat in category_stats:
+            avg_brier = category_stats[cat]["total_brier"] / category_stats[cat]["count"]
+            category_stats[cat] = {
+                "accuracy": round((1 - avg_brier) * 100, 2),
+                "count": category_stats[cat]["count"]
+            }
     
     if isinstance(user.get("created_at"), str):
         user["created_at"] = datetime.fromisoformat(user["created_at"])
