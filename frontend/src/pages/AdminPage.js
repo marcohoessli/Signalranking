@@ -138,6 +138,46 @@ const AdminPage = () => {
   );
 };
 
+// Date Picker Field with auto-close
+const DatePickerField = ({ closingDate, setClosingDate }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const handleSelect = (date) => {
+    setClosingDate(date);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>Closing Date *</Label>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !closingDate && "text-muted-foreground"
+            )}
+            data-testid="question-date-picker"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {closingDate ? format(closingDate, "PPP") : "Pick a date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 z-50" align="start">
+          <Calendar
+            mode="single"
+            selected={closingDate}
+            onSelect={handleSelect}
+            disabled={(date) => date < new Date()}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 // Create Question Dialog
 const CreateQuestionDialog = ({ open, onOpenChange, onSuccess }) => {
   const [title, setTitle] = useState("");
