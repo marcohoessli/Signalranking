@@ -664,37 +664,42 @@ async def create_or_update_prediction(pred_data: PredictionCreate, request: Requ
         return pred_doc
 
 @api_router.get("/predictions/user/{user_id}", response_model=List[PredictionWithQuestion])
-async def get_user_predictions(user_id: str):
+async def get_user_predictions(user_id: str, limit: int = 100):
     predictions = await db.predictions.find(
         {"user_id": user_id},
         {"_id": 0}
-    ).sort("created_at", -1).to_list(None)
+    ).sort("created_at", -1).to_list(limit)
     
-    # Enrich with question data
-    for pred in predictions:
-        question = await db.questions.find_one(
-            {"question_id": pred["question_id"]},
-            {"_id": 0}
-        )
-        if question:
-            pred["question_title"] = question["title"]
-            pred["question_category"] = question["category"]
-            pred["question_status"] = question["status"]
-            pred["question_outcome"] = question.get("outcome")
+    # Fetch all questions in single query (avoid N+1)
+    if predictions:
+        question_ids = list(set(p["question_id"] for p in predictions))
+        questions_list = await db.questions.find(
+            {"question_id": {"$in": question_ids}},
+            {"_id": 0, "question_id": 1, "title": 1, "category": 1, "status": 1, "outcome": 1}
+        ).to_list(len(question_ids))
+        questions_map = {q["question_id"]: q for q in questions_list}
         
-        if isinstance(pred.get("created_at"), str):
-            pred["created_at"] = datetime.fromisoformat(pred["created_at"])
-        if isinstance(pred.get("updated_at"), str):
-            pred["updated_at"] = datetime.fromisoformat(pred["updated_at"])
+        for pred in predictions:
+            question = questions_map.get(pred["question_id"])
+            if question:
+                pred["question_title"] = question["title"]
+                pred["question_category"] = question["category"]
+                pred["question_status"] = question["status"]
+                pred["question_outcome"] = question.get("outcome")
+            
+            if isinstance(pred.get("created_at"), str):
+                pred["created_at"] = datetime.fromisoformat(pred["created_at"])
+            if isinstance(pred.get("updated_at"), str):
+                pred["updated_at"] = datetime.fromisoformat(pred["updated_at"])
     
     return predictions
 
 @api_router.get("/predictions/question/{question_id}", response_model=List[PredictionResponse])
-async def get_question_predictions(question_id: str):
+async def get_question_predictions(question_id: str, limit: int = 500):
     predictions = await db.predictions.find(
         {"question_id": question_id},
         {"_id": 0}
-    ).to_list(None)
+    ).to_list(limit)
     
     for pred in predictions:
         if isinstance(pred.get("created_at"), str):
