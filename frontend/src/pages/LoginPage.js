@@ -14,17 +14,21 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
       await login(email, password);
       toast.success("Welcome back!");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error(error.message || "Login failed");
+    } catch (err) {
+      const errorMessage = err?.message || "Login failed";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
