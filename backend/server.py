@@ -566,24 +566,30 @@ async def resolve_question(question_id: str, resolution: QuestionResolve, reques
         {"$set": {"status": "resolved", "outcome": resolution.outcome}}
     )
     
-    # Calculate Brier scores for all predictions
+    # Calculate Brier scores for all predictions (with limit for safety)
     predictions = await db.predictions.find(
         {"question_id": question_id},
-        {"_id": 0}
-    ).to_list(None)
+        {"_id": 0, "prediction_id": 1, "probability": 1, "user_id": 1}
+    ).to_list(10000)
     
-    user_ids = set()
-    for pred in predictions:
-        brier_score = calculate_brier_score(pred["probability"], resolution.outcome)
-        await db.predictions.update_one(
-            {"prediction_id": pred["prediction_id"]},
-            {"$set": {"brier_score": brier_score}}
-        )
-        user_ids.add(pred["user_id"])
-    
-    # Update all affected users' accuracy scores
-    for user_id in user_ids:
-        await update_user_accuracy(user_id)
+    # Use bulk write for efficient updates (avoid N+1)
+    if predictions:
+        from pymongo import UpdateOne
+        bulk_ops = []
+        user_ids = set()
+        for pred in predictions:
+            brier_score = calculate_brier_score(pred["probability"], resolution.outcome)
+            bulk_ops.append(UpdateOne(
+                {"prediction_id": pred["prediction_id"]},
+                {"$set": {"brier_score": brier_score}}
+            ))
+            user_ids.add(pred["user_id"])
+        
+        await db.predictions.bulk_write(bulk_ops)
+        
+        # Update all affected users' accuracy scores
+        for user_id in user_ids:
+            await update_user_accuracy(user_id)
     
     return {"message": "Question resolved", "outcome": resolution.outcome, "predictions_scored": len(predictions)}
 
