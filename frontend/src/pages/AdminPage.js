@@ -247,33 +247,10 @@ const CreateQuestionDialog = ({ open, onOpenChange, onSuccess }) => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Closing Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !closingDate && "text-muted-foreground"
-                      )}
-                      data-testid="question-date-picker"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {closingDate ? format(closingDate, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={closingDate}
-                      onSelect={setClosingDate}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <DatePickerField 
+                closingDate={closingDate} 
+                setClosingDate={setClosingDate} 
+              />
             </div>
 
             <div className="space-y-2">
