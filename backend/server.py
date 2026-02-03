@@ -459,7 +459,8 @@ async def logout(request: Request, response: Response):
 @api_router.get("/questions", response_model=List[QuestionResponse])
 async def get_questions(
     category: Optional[str] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    limit: int = 100
 ):
     query = {}
     if category:
@@ -467,17 +468,26 @@ async def get_questions(
     if status:
         query["status"] = status
     
-    questions = await db.questions.find(query, {"_id": 0}).sort("created_at", -1).to_list(None)
+    questions = await db.questions.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     
-    # Get prediction counts
-    for q in questions:
-        count = await db.predictions.count_documents({"question_id": q["question_id"]})
-        q["prediction_count"] = count
-        # Convert datetime if needed
-        if isinstance(q.get("closing_date"), str):
-            q["closing_date"] = datetime.fromisoformat(q["closing_date"])
-        if isinstance(q.get("created_at"), str):
-            q["created_at"] = datetime.fromisoformat(q["created_at"])
+    # Get prediction counts in single aggregation query (avoid N+1)
+    if questions:
+        question_ids = [q["question_id"] for q in questions]
+        counts_cursor = db.predictions.aggregate([
+            {"$match": {"question_id": {"$in": question_ids}}},
+            {"$group": {"_id": "$question_id", "count": {"$sum": 1}}}
+        ])
+        counts_map = {doc["_id"]: doc["count"] async for doc in counts_cursor}
+        
+        for q in questions:
+            q["prediction_count"] = counts_map.get(q["question_id"], 0)
+            # Convert datetime if needed
+            if isinstance(q.get("closing_date"), str):
+                q["closing_date"] = datetime.fromisoformat(q["closing_date"])
+            if isinstance(q.get("created_at"), str):
+                q["created_at"] = datetime.fromisoformat(q["created_at"])
+    
+    return questions
     
     return questions
 
