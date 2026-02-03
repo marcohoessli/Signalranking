@@ -248,8 +248,8 @@ async def update_user_accuracy(user_id: str):
     """Recalculate user's accuracy score based on all resolved predictions"""
     predictions = await db.predictions.find(
         {"user_id": user_id, "brier_score": {"$ne": None}},
-        {"_id": 0}
-    ).to_list(None)
+        {"_id": 0, "brier_score": 1}
+    ).to_list(10000)
     
     if not predictions:
         return
