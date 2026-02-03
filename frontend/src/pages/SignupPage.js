@@ -15,12 +15,16 @@ const SignupPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      const msg = "Password must be at least 6 characters";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -30,8 +34,10 @@ const SignupPage = () => {
       await signup(email, name, password);
       toast.success("Account created successfully!");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error(error.message || "Signup failed");
+    } catch (err) {
+      const errorMessage = err?.message || "Signup failed";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
