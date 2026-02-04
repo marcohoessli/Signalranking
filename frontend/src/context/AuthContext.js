@@ -1,9 +1,19 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const AuthContext = createContext(null);
+
+// Helper to get/set token in localStorage
+const getStoredToken = () => localStorage.getItem("auth_token");
+const setStoredToken = (token) => {
+  if (token) {
+    localStorage.setItem("auth_token", token);
+  } else {
+    localStorage.removeItem("auth_token");
+  }
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -15,26 +25,48 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const getAuthHeaders = () => {
+    const token = getStoredToken();
+    if (token) {
+      return { "Authorization": `Bearer ${token}` };
+    }
+    return {};
+  };
 
   const checkAuth = useCallback(async () => {
     setLoading(true);
     try {
+      const token = getStoredToken();
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return null;
+      }
+
       const response = await fetch(`${API}/auth/me`, {
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         const data = await response.json();
-        // Create plain object copy for Safari compatibility
         const userData = JSON.parse(JSON.stringify(data));
         setUser(userData);
         return userData;
       } else {
+        setStoredToken(null);
         setUser(null);
         return null;
       }
     } catch (error) {
       console.error("Auth check error:", error);
+      setStoredToken(null);
       setUser(null);
       return null;
     } finally {
@@ -56,7 +88,11 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data.detail || "Login failed");
     }
 
-    // Create plain object copy for Safari compatibility
+    // Store token in localStorage for Safari/cross-origin support
+    if (data.token) {
+      setStoredToken(data.token);
+    }
+
     const userData = JSON.parse(JSON.stringify(data));
     setUser(userData);
     return userData;
@@ -76,7 +112,11 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data.detail || "Signup failed");
     }
 
-    // Create plain object copy for Safari compatibility
+    // Store token in localStorage for Safari/cross-origin support
+    if (data.token) {
+      setStoredToken(data.token);
+    }
+
     const userData = JSON.parse(JSON.stringify(data));
     setUser(userData);
     return userData;
@@ -86,11 +126,13 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch(`${API}/auth/logout`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        headers: getAuthHeaders()
       });
     } catch (error) {
       console.error("Logout error:", error);
     }
+    setStoredToken(null);
     setUser(null);
   };
 
@@ -110,7 +152,8 @@ export const AuthProvider = ({ children }) => {
         login,
         signup,
         logout,
-        loginWithGoogle
+        loginWithGoogle,
+        getAuthHeaders
       }}
     >
       {children}
