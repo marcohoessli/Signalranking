@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -46,9 +46,14 @@ const AuthCallback = () => {
           });
           
           if (response.ok) {
-            const userData = await response.json();
+            const data = await response.json();
+            // Store token for Safari/cross-origin support
+            if (data.session_token) {
+              localStorage.setItem("auth_token", data.session_token);
+            }
+            const userData = JSON.parse(JSON.stringify(data));
             setUser(userData);
-            navigate("/dashboard", { state: { user: userData }, replace: true });
+            navigate("/dashboard", { replace: true });
           } else {
             navigate("/login", { replace: true });
           }
@@ -90,38 +95,13 @@ const ProtectedRoute = ({ children }) => {
 
   return children;
 };
-        <div className="text-slate-600">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-};
 
 // Admin route wrapper
 const AdminRoute = ({ children }) => {
-  const { user, loading, checkAuth } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
-  const [isChecking, setIsChecking] = useState(!location.state?.user);
 
-  useEffect(() => {
-    if (location.state?.user) {
-      setIsChecking(false);
-      return;
-    }
-
-    const verify = async () => {
-      await checkAuth();
-      setIsChecking(false);
-    };
-    verify();
-  }, [checkAuth, location.state?.user]);
-
-  if (isChecking || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-slate-600">Loading...</div>
@@ -130,7 +110,7 @@ const AdminRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (user.role !== "admin") {
