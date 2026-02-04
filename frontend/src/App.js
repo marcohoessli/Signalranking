@@ -73,26 +73,23 @@ const AuthCallback = () => {
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
-  const { user, loading, checkAuth } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
-  const [isChecking, setIsChecking] = useState(!location.state?.user);
 
-  useEffect(() => {
-    if (location.state?.user) {
-      setIsChecking(false);
-      return;
-    }
-
-    const verify = async () => {
-      await checkAuth();
-      setIsChecking(false);
-    };
-    verify();
-  }, [checkAuth, location.state?.user]);
-
-  if (isChecking || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
         <div className="text-slate-600">Loading...</div>
       </div>
     );
