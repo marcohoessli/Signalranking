@@ -488,8 +488,6 @@ async def get_questions(
                 q["created_at"] = datetime.fromisoformat(q["created_at"])
     
     return questions
-    
-    return questions
 
 @api_router.get("/questions/{question_id}", response_model=QuestionResponse)
 async def get_question(question_id: str):
