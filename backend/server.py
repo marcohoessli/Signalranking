@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env', override=False)
@@ -28,6 +29,15 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
 # Create the main app
 app = FastAPI(title="SignalRanking API")
+
+# Configure CORS middleware BEFORE routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -349,8 +359,6 @@ async def login(credentials: UserLogin, response: Response):
 @api_router.post("/auth/session")
 async def process_google_session(request: Request, response: Response):
     """Process Google OAuth session_id and create user session"""
-    import httpx
-    
     body = await request.json()
     session_id = body.get("session_id")
     
@@ -853,14 +861,6 @@ async def get_categories():
 
 # Include the router in the main app
 app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
