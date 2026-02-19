@@ -64,9 +64,7 @@ class UserCreate(BaseModel):
         ..., 
         min_length=8, 
         max_length=128,
-        json_schema_extra={
-            "description": "Password (8-128 chars, must contain at least one letter and one number)"
-        }
+        description="Password (8-128 characters, must contain at least one letter and one number)"
     )
     
     @field_validator('password')
