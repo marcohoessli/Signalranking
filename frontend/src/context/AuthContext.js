@@ -27,18 +27,18 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check auth on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const token = getStoredToken();
     if (token) {
       return { "Authorization": `Bearer ${token}` };
     }
     return {};
-  };
+  }, []);
+
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const checkAuth = useCallback(async () => {
     setLoading(true);
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   const login = async (email, password) => {
     const response = await fetch(`${API}/auth/login`, {

@@ -6,12 +6,14 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
+import httpx
+import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env', override=False)
@@ -28,6 +30,15 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
 # Create the main app
 app = FastAPI(title="SignalRanking API")
+
+# Configure CORS middleware BEFORE routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -49,11 +60,27 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
-    password: str
+    password: str = Field(
+        ..., 
+        min_length=8, 
+        max_length=128,
+        description="Password (8-128 characters, must contain at least one letter and one number)"
+    )
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        # Check for at least one number
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        # Check for at least one letter
+        if not any(char.isalpha() for char in v):
+            raise ValueError('Password must contain at least one letter')
+        return v
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, max_length=128)
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -156,10 +183,29 @@ class RoleUpdate(BaseModel):
 # ============== HELPER FUNCTIONS ==============
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    """
+    Hash a password using bcrypt with SHA-256 pre-hashing for passwords > 72 bytes.
+    This allows passwords up to 128 characters while maintaining bcrypt security.
+    """
+    # Pre-hash with SHA-256 if password is longer than 72 bytes
+    # This ensures we can handle longer passwords while staying within bcrypt's limits
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        # Use SHA-256 to create a fixed-length hash, then encode as hex
+        password_bytes = hashlib.sha256(password_bytes).hexdigest().encode('utf-8')
+    
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    """
+    Verify a password against a bcrypt hash, applying the same pre-hashing if needed.
+    """
+    # Apply the same pre-hashing logic as hash_password
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = hashlib.sha256(password_bytes).hexdigest().encode('utf-8')
+    
+    return bcrypt.checkpw(password_bytes, hashed.encode('utf-8'))
 
 def create_jwt_token(user_id: str) -> str:
     payload = {
@@ -349,8 +395,6 @@ async def login(credentials: UserLogin, response: Response):
 @api_router.post("/auth/session")
 async def process_google_session(request: Request, response: Response):
     """Process Google OAuth session_id and create user session"""
-    import httpx
-    
     body = await request.json()
     session_id = body.get("session_id")
     
@@ -853,14 +897,6 @@ async def get_categories():
 
 # Include the router in the main app
 app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
