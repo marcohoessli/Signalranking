@@ -35,11 +35,6 @@ export const AuthProvider = ({ children }) => {
     return {};
   }, []);
 
-  // Check auth on mount
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
   const checkAuth = useCallback(async () => {
     setLoading(true);
     try {
@@ -73,6 +68,11 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, [getAuthHeaders]);
+
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const login = async (email, password) => {
     const response = await fetch(`${API}/auth/login`, {
