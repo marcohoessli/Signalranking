@@ -6,13 +6,14 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
 import httpx
+import hashlib
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env', override=False)
@@ -59,11 +60,26 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
-    password: str
+    password: str = Field(..., min_length=8, max_length=128, description="Password must be between 8 and 128 characters")
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if len(v) > 128:
+            raise ValueError('Password must not exceed 128 characters')
+        # Check for at least one number
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        # Check for at least one letter
+        if not any(char.isalpha() for char in v):
+            raise ValueError('Password must contain at least one letter')
+        return v
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, max_length=128)
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -166,10 +182,29 @@ class RoleUpdate(BaseModel):
 # ============== HELPER FUNCTIONS ==============
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    """
+    Hash a password using bcrypt with SHA-256 pre-hashing for passwords > 72 bytes.
+    This allows passwords up to 128 characters while maintaining bcrypt security.
+    """
+    # Pre-hash with SHA-256 if password is longer than 72 bytes
+    # This ensures we can handle longer passwords while staying within bcrypt's limits
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        # Use SHA-256 to create a fixed-length hash, then encode as hex
+        password_bytes = hashlib.sha256(password_bytes).hexdigest().encode('utf-8')
+    
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    """
+    Verify a password against a bcrypt hash, applying the same pre-hashing if needed.
+    """
+    # Apply the same pre-hashing logic as hash_password
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = hashlib.sha256(password_bytes).hexdigest().encode('utf-8')
+    
+    return bcrypt.checkpw(password_bytes, hashed.encode('utf-8'))
 
 def create_jwt_token(user_id: str) -> str:
     payload = {
