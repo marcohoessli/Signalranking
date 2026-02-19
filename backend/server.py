@@ -60,15 +60,18 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
-    password: str = Field(..., min_length=8, max_length=128, description="Password must be between 8 and 128 characters")
+    password: str = Field(
+        ..., 
+        min_length=8, 
+        max_length=128,
+        json_schema_extra={
+            "description": "Password (8-128 chars, must contain at least one letter and one number)"
+        }
+    )
     
     @field_validator('password')
     @classmethod
     def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        if len(v) > 128:
-            raise ValueError('Password must not exceed 128 characters')
         # Check for at least one number
         if not any(char.isdigit() for char in v):
             raise ValueError('Password must contain at least one number')
