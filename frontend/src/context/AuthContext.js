@@ -75,51 +75,81 @@ export const AuthProvider = ({ children }) => {
   }, [checkAuth]);
 
   const login = async (email, password) => {
-    const response = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const response = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password })
+      });
 
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.detail || "Login failed");
+      // Clone the response so we can read it multiple times if needed
+      const clonedResponse = response.clone();
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, try to get text for better error message
+        const text = await clonedResponse.text();
+        throw new Error(`Invalid response from server: ${text.substring(0, 100)}`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(data.detail || "Login failed");
+      }
+
+      // Store token in localStorage for Safari/cross-origin support
+      if (data.token) {
+        setStoredToken(data.token);
+      }
+
+      const userData = JSON.parse(JSON.stringify(data));
+      setUser(userData);
+      return userData;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
-
-    // Store token in localStorage for Safari/cross-origin support
-    if (data.token) {
-      setStoredToken(data.token);
-    }
-
-    const userData = JSON.parse(JSON.stringify(data));
-    setUser(userData);
-    return userData;
   };
 
   const signup = async (email, name, password) => {
-    const response = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, name, password })
-    });
+    try {
+      const response = await fetch(`${API}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, name, password })
+      });
 
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.detail || "Signup failed");
+      // Clone the response so we can read it multiple times if needed
+      const clonedResponse = response.clone();
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, try to get text for better error message
+        const text = await clonedResponse.text();
+        throw new Error(`Invalid response from server: ${text.substring(0, 100)}`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(data.detail || "Signup failed");
+      }
+
+      // Store token in localStorage for Safari/cross-origin support
+      if (data.token) {
+        setStoredToken(data.token);
+      }
+
+      const userData = JSON.parse(JSON.stringify(data));
+      setUser(userData);
+      return userData;
+    } catch (error) {
+      console.error("Signup error:", error);
+      throw error;
     }
-
-    // Store token in localStorage for Safari/cross-origin support
-    if (data.token) {
-      setStoredToken(data.token);
-    }
-
-    const userData = JSON.parse(JSON.stringify(data));
-    setUser(userData);
-    return userData;
   };
 
   const logout = async () => {
